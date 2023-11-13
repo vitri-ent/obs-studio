@@ -108,6 +108,7 @@ bool opt_disable_missing_files_check = false;
 string opt_starting_collection;
 string opt_starting_profile;
 string opt_starting_scene;
+string opt_config_root;
 
 bool restart = false;
 bool restart_safe = false;
@@ -2746,9 +2747,16 @@ int GetConfigPath(char *path, size_t size, const char *name)
 #if ALLOW_PORTABLE_MODE
 	if (portable_mode) {
 		if (name && *name) {
-			return snprintf(path, size, CONFIG_PATH "/%s", name);
+			return snprintf(path, size,
+					!opt_config_root.empty()
+						? (opt_config_root + "/%s").c_str()
+						: CONFIG_PATH "/%s",
+					name);
 		} else {
-			return snprintf(path, size, CONFIG_PATH);
+			return snprintf(path, size,
+					!opt_config_root.empty()
+						? opt_config_root.c_str()
+						: CONFIG_PATH);
 		}
 	} else {
 		return os_get_config_path(path, size, name);
@@ -3299,6 +3307,7 @@ int main(int argc, char *argv[])
 	// Try to keep this as early as possible
 	install_dll_blocklist_hook();
 
+	InitConsole();
 	obs_init_win32_crash_handler();
 	SetErrorMode(SEM_FAILCRITICALERRORS);
 	load_debug_privilege();
@@ -3324,6 +3333,10 @@ int main(int argc, char *argv[])
 #if ALLOW_PORTABLE_MODE
 		} else if (arg_is(argv[i], "--portable", "-p")) {
 			portable_mode = true;
+
+		} else if (arg_is(argv[i], "--config-root", nullptr)) {
+			if (++i < argc)
+				opt_config_root = argv[i];
 
 #endif
 		} else if (arg_is(argv[i], "--verbose", nullptr)) {
@@ -3390,6 +3403,9 @@ int main(int argc, char *argv[])
 			steam = true;
 
 		} else if (arg_is(argv[i], "--help", "-h")) {
+			std::cout << "OBS Studio - "
+				  << App()->GetVersionString(false) << "\n\n";
+
 			std::string help =
 				"--help, -h: Get list of available commands.\n\n"
 				"--startstreaming: Automatically start streaming.\n"
@@ -3404,6 +3420,7 @@ int main(int argc, char *argv[])
 				"--minimize-to-tray: Minimize to system tray.\n"
 #if ALLOW_PORTABLE_MODE
 				"--portable, -p: Use portable mode.\n"
+				"--config-root: Specify the parent folder for the 'obs-studio' configuration folder in portable mode.\n"
 #endif
 				"--multi, -m: Don't warn when launching multiple instances.\n\n"
 				"--safe-mode: Run in Safe Mode (disables third-party plugins, scripting, and WebSockets).\n"
@@ -3413,15 +3430,11 @@ int main(int argc, char *argv[])
 				"--always-on-top: Start in 'always on top' mode.\n\n"
 				"--unfiltered_log: Make log unfiltered.\n\n"
 				"--disable-updater: Disable built-in updater (Windows/Mac only)\n\n"
-				"--disable-missing-files-check: Disable the missing files dialog which can appear on startup.\n\n";
+				"--disable-missing-files-check: Disable the missing files dialog which can appear on startup.\n\n"
+				"--version, -V: Get current version.\n";
 
-#ifdef _WIN32
-			MessageBoxA(NULL, help.c_str(), "Help",
-				    MB_OK | MB_ICONASTERISK);
-#else
-			std::cout << help
-				  << "--version, -V: Get current version.\n";
-#endif
+			std::cout << help;
+
 			exit(0);
 
 		} else if (arg_is(argv[i], "--version", "-V")) {

@@ -58,6 +58,7 @@ uint32_t GetWindowsBuild();
 void SetProcessPriority(const char *priority);
 void SetWin32DropStyle(QWidget *window);
 bool DisableAudioDucking(bool disable);
+void InitConsole(void);
 
 struct RunOnceMutexData;
 

@@ -1415,8 +1415,6 @@ void obs_shutdown(void)
 	FREE_REGISTERED_TYPES(obs_output_info, obs->output_types);
 	FREE_REGISTERED_TYPES(obs_encoder_info, obs->encoder_types);
 	FREE_REGISTERED_TYPES(obs_service_info, obs->service_types);
-	FREE_REGISTERED_TYPES(obs_modal_ui, obs->modal_ui_callbacks);
-	FREE_REGISTERED_TYPES(obs_modeless_ui, obs->modeless_ui_callbacks);
 
 #undef FREE_REGISTERED_TYPES
 
@@ -1805,66 +1803,6 @@ audio_t *obs_get_audio(void)
 video_t *obs_get_video(void)
 {
 	return obs->video.main_mix->video;
-}
-
-/* TODO: optimize this later so it's not just O(N) string lookups */
-static inline struct obs_modal_ui *
-get_modal_ui_callback(const char *id, const char *task, const char *target)
-{
-	for (size_t i = 0; i < obs->modal_ui_callbacks.num; i++) {
-		struct obs_modal_ui *callback =
-			obs->modal_ui_callbacks.array + i;
-
-		if (strcmp(callback->id, id) == 0 &&
-		    strcmp(callback->task, task) == 0 &&
-		    strcmp(callback->target, target) == 0)
-			return callback;
-	}
-
-	return NULL;
-}
-
-static inline struct obs_modeless_ui *
-get_modeless_ui_callback(const char *id, const char *task, const char *target)
-{
-	for (size_t i = 0; i < obs->modeless_ui_callbacks.num; i++) {
-		struct obs_modeless_ui *callback;
-		callback = obs->modeless_ui_callbacks.array + i;
-
-		if (strcmp(callback->id, id) == 0 &&
-		    strcmp(callback->task, task) == 0 &&
-		    strcmp(callback->target, target) == 0)
-			return callback;
-	}
-
-	return NULL;
-}
-
-int obs_exec_ui(const char *name, const char *task, const char *target,
-		void *data, void *ui_data)
-{
-	struct obs_modal_ui *callback;
-	int errorcode = OBS_UI_NOTFOUND;
-
-	if (!obs)
-		return errorcode;
-
-	callback = get_modal_ui_callback(name, task, target);
-	if (callback) {
-		bool success = callback->exec(data, ui_data);
-		errorcode = success ? OBS_UI_SUCCESS : OBS_UI_CANCEL;
-	}
-
-	return errorcode;
-}
-
-void *obs_create_ui(const char *name, const char *task, const char *target,
-		    void *data, void *ui_data)
-{
-	struct obs_modeless_ui *callback;
-
-	callback = get_modeless_ui_callback(name, task, target);
-	return callback ? callback->create(data, ui_data) : NULL;
 }
 
 obs_source_t *obs_get_output_source(uint32_t channel)
@@ -2523,6 +2461,7 @@ obs_data_t *obs_save_source(obs_source_t *source)
 	int m_type = (int)obs_source_get_monitoring_type(source);
 	int di_mode = (int)obs_source_get_deinterlace_mode(source);
 	int di_order = (int)obs_source_get_deinterlace_field_order(source);
+	DARRAY(obs_source_t *) filters_copy;
 
 	obs_source_save(source);
 	hotkeys = obs_hotkeys_save_source(source);
@@ -2563,19 +2502,31 @@ obs_data_t *obs_save_source(obs_source_t *source)
 		obs_transition_save(source, source_data);
 
 	pthread_mutex_lock(&source->filter_mutex);
+	da_init(filters_copy);
+	da_reserve(filters_copy, source->filters.num);
 
-	if (source->filters.num) {
-		for (size_t i = source->filters.num; i > 0; i--) {
-			obs_source_t *filter = source->filters.array[i - 1];
+	for (size_t i = 0; i < source->filters.num; i++) {
+		obs_source_t *filter =
+			obs_source_get_ref(source->filters.array[i]);
+		if (filter)
+			da_push_back(filters_copy, &filter);
+	}
+
+	pthread_mutex_unlock(&source->filter_mutex);
+
+	if (filters_copy.num) {
+		for (size_t i = filters_copy.num; i > 0; i--) {
+			obs_source_t *filter = filters_copy.array[i - 1];
 			obs_data_t *filter_data = obs_save_source(filter);
 			obs_data_array_push_back(filters, filter_data);
 			obs_data_release(filter_data);
+			obs_source_release(filter);
 		}
 
 		obs_data_set_array(source_data, "filters", filters);
 	}
 
-	pthread_mutex_unlock(&source->filter_mutex);
+	da_free(filters_copy);
 
 	obs_data_release(settings);
 	obs_data_array_release(filters);

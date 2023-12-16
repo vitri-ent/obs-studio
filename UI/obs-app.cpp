@@ -2747,11 +2747,12 @@ int GetConfigPath(char *path, size_t size, const char *name)
 #if ALLOW_PORTABLE_MODE
 	if (portable_mode) {
 		if (name && *name) {
-			return snprintf(path, size,
-					!opt_config_root.empty()
-						? (opt_config_root + "/%s").c_str()
-						: CONFIG_PATH "/%s",
-					name);
+			return snprintf(
+				path, size,
+				!opt_config_root.empty()
+					? (opt_config_root + "/%s").c_str()
+					: CONFIG_PATH "/%s",
+				name);
 		} else {
 			return snprintf(path, size,
 					!opt_config_root.empty()

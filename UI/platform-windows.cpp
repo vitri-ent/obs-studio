@@ -232,7 +232,8 @@ bool SetDisplayAffinitySupported(void)
 	return supported;
 }
 
-void InitConsole(void) {
+void InitConsole(void)
+{
 	if (_fileno(stdout) >= 0 || _fileno(stderr) >= 0) {
 		return;
 	}

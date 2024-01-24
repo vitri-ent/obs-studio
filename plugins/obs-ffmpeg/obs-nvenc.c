@@ -14,7 +14,7 @@
 /* a hack of the ages: nvenc backward compatibility                          */
 
 #define CONFIGURED_NVENC_MAJOR 12
-#define CONFIGURED_NVENC_MINOR 0
+#define CONFIGURED_NVENC_MINOR 1
 #define CONFIGURED_NVENC_VER \
 	(CONFIGURED_NVENC_MAJOR | (CONFIGURED_NVENC_MINOR << 24))
 
@@ -937,6 +937,14 @@ static bool init_encoder_av1(struct nvenc_data *enc, obs_data_t *settings,
 	/* Enable CBR padding */
 	if (config->rcParams.rateControlMode == NV_ENC_PARAMS_RC_CBR)
 		av1_config->enableBitstreamPadding = 1;
+
+#define PIXELCOUNT_4K (3840 * 2160)
+
+	/* If size is 4K+, set tiles to 2 uniform columns. */
+	if ((voi->width * voi->height) >= PIXELCOUNT_4K) {
+		av1_config->enableCustomTileConfig = 0;
+		av1_config->numTileColumns = 2;
+	}
 
 	switch (voi->colorspace) {
 	case VIDEO_CS_601:

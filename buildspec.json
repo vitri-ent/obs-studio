@@ -1,26 +1,25 @@
 {
     "dependencies": {
         "prebuilt": {
-            "version": "2023-11-03",
+            "version": "2024-01-18",
             "baseUrl": "https://github.com/obsproject/obs-deps/releases/download",
             "label": "Pre-Built obs-deps",
             "hashes": {
-                "macos-universal": "90c2fc069847ec2768dcc867c1c63b112c615ed845a907dc44acab7a97181974",
-                "windows-x64": "d0825a6fb65822c993a3059edfba70d72d2e632ef74893588cf12b1f0d329ce6",
-                "windows-x86": "b69c864275189464483c240ef3f25ea16fba3050b136fe6c3db6e9ee63036683",
-                "linux-x86_64": "9217c6b70854a08575cc3debe85ed5496bb0d8a9de54a1f8148aa71ad71f98d6"
+                "macos-universal": "53214a1f3aece7957126ddb03f8261106a0200b7a953ae119f05f0b8d7db87f7",
+                "windows-x64": "5e78964e1d54602138f13429445502855adbae88adb41f2e92779eadbd5698a1",
+                "windows-x86": "96a48417a04c9922bd6608727892908760f923031183fe6ae44447fc2ba4bffe"
             }
         },
         "qt6": {
-            "version": "2023-11-03",
+            "version": "2024-01-18",
             "baseUrl": "https://github.com/obsproject/obs-deps/releases/download",
             "label": "Pre-Built Qt6",
             "hashes": {
-                "macos-universal": "ba4a7152848da0053f63427a2a2cb0a199af3992997c0db08564df6f48c9db98",
-                "windows-x64": "bc57dedf76b47119a6dce0435a2f21b35b08c8f2948b1cb34a157320f77732d1"
+                "macos-universal": "8d3a8ff028c0c5e1ed8ab1b81da483f151b3ea214390a9b1fef30f836938c1bb",
+                "windows-x64": "59155432b6ea0044f4399ebcf83e882112d4aedae99d00b4f6f765e5897f752b"
             },
             "debugSymbols": {
-                "windows-x64": "fd8ecd1d8cd2ef049d9f4d7fb5c134f784836d6020758094855dfa98bd025036"
+                "windows-x64": "98d3f590175fceefce4e5e20b56886ff04f004db938dcbbd11dde5ca69bf7494"
             }
         },
         "cef": {
@@ -45,10 +44,10 @@
     },
     "tools": {
         "sparkle": {
-            "version": "2.4.2",
+            "version": "2.5.2",
             "baseUrl": "https://github.com/sparkle-project/Sparkle/releases/download",
             "label": "Sparkle 2",
-            "hash": "64ca2b157eb94dfad6580ccb98192b48cd008076b8e72ee6a02d753595f0c731"
+            "hash": "572dd67ae398a466f19f343a449e1890bac1ef74885b4739f68f979a8a89884b"
         },
         "ccache-win": {
             "version": "4.8.1",

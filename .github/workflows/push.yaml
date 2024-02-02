@@ -33,7 +33,7 @@ jobs:
     permissions:
       checks: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -57,7 +57,7 @@ jobs:
     permissions:
       checks: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -81,7 +81,7 @@ jobs:
     if: github.repository_owner == 'obsproject' && (github.ref_name == 'master' || github.ref_type == 'tag')
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -115,7 +115,7 @@ jobs:
           : Get Commit Hash 🆔
           echo "commitHash=${GITHUB_SHA:0:9}" >> $GITHUB_OUTPUT
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: OBS Studio Docs (No Extensions) ${{ steps.setup.outputs.commitHash }}
           path: docs
@@ -149,7 +149,7 @@ jobs:
       run:
         shell: zsh --no-rcs --errexit --pipefail {0}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
@@ -172,7 +172,7 @@ jobs:
           print "channel=${channel}" >> $GITHUB_OUTPUT
 
       - name: Download Artifact 📥
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: obs-studio-macos-${{ matrix.target }}-${{ steps.setup.outputs.commitHash }}
 
@@ -189,10 +189,21 @@ jobs:
           customLink: 'https://obsproject.com/'
 
       - name: Upload Artifacts 📡
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-sparkle-update-${{ matrix.target }}
+          path: ${{ github.workspace }}/output
+
+  merge-appcasts:
+    runs-on: ubuntu-22.04
+    needs: create-appcast
+    steps:
+      - name: Merge Appcasts
+        uses: actions/upload-artifact/merge@v4
         with:
           name: macos-sparkle-update
-          path: ${{ github.workspace }}/output
+          pattern: macos-sparkle-update-*
+          delete-merged: true
 
   create-windows-update:
     name: Create Windows Update 🥩
@@ -208,7 +219,7 @@ jobs:
     environment:
       name: bouf
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: "repo"
           fetch-depth: 0
@@ -217,7 +228,7 @@ jobs:
       - name: Set Up Environment 🔧
         id: setup
         env:
-          BOUF_ACTION_HASH: '4b421d1fa51cbf35f9c68f80795be3468dc480d47989c0bf713c39a7d62dec9e'
+          BOUF_ACTION_HASH: 'f9fdc601d0da8c3f18e0135d3f0ffbfba6544ff1742906ccfa9fdbe4bdea4bf9'
         run: |
           $channel = if ($env:GITHUB_REF_NAME -match "(beta|rc)") { "beta" } else { "stable" }
           $shortHash = $env:GITHUB_SHA.Substring(0,9)
@@ -237,7 +248,7 @@ jobs:
           }
 
       - name: Download Artifact 📥
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: obs-studio-windows-x64-${{ steps.setup.outputs.commitHash }}
           path: ${{ github.workspace }}/build
@@ -314,7 +325,7 @@ jobs:
           esac
 
       - name: Download Build Artifacts 📥
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         if: ${{ fromJSON(steps.check.outputs.validTag) }}
 
       - name: Rename Files 🏷️

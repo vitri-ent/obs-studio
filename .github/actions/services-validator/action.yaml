@@ -51,8 +51,8 @@ runs:
         if [[ "${RUNNER_OS}" == Linux ]]; then
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> $GITHUB_PATH
+          brew install --overwrite --quiet python3
         fi
-        brew install --overwrite --quiet python@3.11
         python3 -m pip install jsonschema json_source_map requests aiohttp
         echo ::endgroup::
 
@@ -82,7 +82,7 @@ runs:
 
     - name: Restore Timestamp Cache ⏳
       if: fromJSON(inputs.runServiceChecks)
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/other
         key: service-check-${{ github.run_id }}
@@ -103,14 +103,14 @@ runs:
         : Check for defunct services 📉
         python3 -u .github/scripts/utils.py/check-services.py
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       if: fromJSON(inputs.runServiceChecks)
       with:
         name: timestamps
         path: ${{ inputs.workingDirectory }}/other/*
 
     - name: Create pull request 🔧
-      uses: peter-evans/create-pull-request@ad43dccb4d726ca8514126628bec209b8354b6dd
+      uses: peter-evans/create-pull-request@b1ddad2c994a25fbc81a28b3ec0e368bb2021c50
       if: fromJSON(inputs.createPullRequest) && fromJSON(inputs.runServiceChecks) && fromJSON(steps.services-check.outputs.make_pr)
       with:
         author: 'Service Checker <commits@obsproject.com>'

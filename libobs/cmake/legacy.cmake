@@ -20,6 +20,7 @@ find_package(
   COMPONENTS avformat avutil swscale swresample
   OPTIONAL_COMPONENTS avcodec)
 find_package(ZLIB REQUIRED)
+find_package(Uthash REQUIRED)
 
 add_library(libobs SHARED)
 add_library(OBS::libobs ALIAS libobs)
@@ -197,6 +198,7 @@ target_sources(
           util/profiler.c
           util/profiler.h
           util/profiler.hpp
+          util/pipe.c
           util/pipe.h
           util/serializer.h
           util/sse-intrin.h
@@ -254,8 +256,8 @@ target_link_libraries(
           FFmpeg::swresample
           Jansson::Jansson
           OBS::caption
-          OBS::uthash
           OBS::libobs-version
+          Uthash::Uthash
           ZLIB::ZLIB
   PUBLIC Threads::Threads)
 

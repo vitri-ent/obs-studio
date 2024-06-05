@@ -42,7 +42,7 @@
 #include "obs-app.hpp"
 #include "obs-proxy-style.hpp"
 #include "log-viewer.hpp"
-#include "slider-ignorewheel.hpp"
+#include "volume-control.hpp"
 #include "window-basic-main.hpp"
 #ifdef __APPLE__
 #include "window-permissions.hpp"
@@ -387,7 +387,7 @@ static inline bool too_many_repeated_entries(fstream &logFile, const char *msg,
 static void do_log(int log_level, const char *msg, va_list args, void *param)
 {
 	fstream &logFile = *static_cast<fstream *>(param);
-	char str[4096];
+	char str[8192];
 
 #ifndef _WIN32
 	va_list args2;
@@ -1784,6 +1784,8 @@ string GetFormatExt(const char *container)
 	string ext = container;
 	if (ext == "fragmented_mp4")
 		ext = "mp4";
+	if (ext == "hybrid_mp4")
+		ext = "mp4";
 	else if (ext == "fragmented_mov")
 		ext = "mov";
 	else if (ext == "hls")
@@ -1988,12 +1990,6 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__)
-	/* NOTE: The Breeze Qt style plugin adds frame arround QDockWidget with
-	 * QPainter which can not be modifed. To avoid this the base style is
-	 * enforce to the Qt default style on Linux: Fusion. */
-
-	setenv("QT_STYLE_OVERRIDE", "Fusion", false);
-
 	/* NOTE: Users blindly set this, but this theme is incompatble with Qt6 and
 	 * crashes loading saved geometry. Just turn off this theme and let users complain OBS
 	 * looks ugly instead of crashing. */

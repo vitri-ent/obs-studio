@@ -160,7 +160,9 @@ target_sources(
 
 target_sources(
   obs
-  PRIVATE adv-audio-control.cpp
+  PRIVATE absolute-slider.cpp
+          absolute-slider.hpp
+          adv-audio-control.cpp
           adv-audio-control.hpp
           audio-encoders.cpp
           audio-encoders.hpp
@@ -184,8 +186,6 @@ target_sources(
           log-viewer.hpp
           media-controls.cpp
           media-controls.hpp
-          media-slider.cpp
-          media-slider.hpp
           menu-button.cpp
           menu-button.hpp
           mute-checkbox.hpp
@@ -201,8 +201,6 @@ target_sources(
           scene-tree.cpp
           scene-tree.hpp
           screenshot-obj.hpp
-          slider-absoluteset-style.cpp
-          slider-absoluteset-style.hpp
           slider-ignorewheel.cpp
           slider-ignorewheel.hpp
           source-label.cpp
@@ -281,6 +279,23 @@ target_sources(
           window-projector.hpp
           window-remux.cpp
           window-remux.hpp)
+
+target_sources(
+  obs
+  PRIVATE # cmake-format: sortable
+          goliveapi-censoredjson.cpp
+          goliveapi-censoredjson.hpp
+          goliveapi-network.cpp
+          goliveapi-network.hpp
+          goliveapi-postdata.cpp
+          goliveapi-postdata.hpp
+          multitrack-video-error.cpp
+          multitrack-video-error.hpp
+          multitrack-video-output.cpp
+          multitrack-video-output.hpp
+          qt-helpers.cpp
+          qt-helpers.hpp
+          system-info.hpp)
 
 target_sources(obs PRIVATE importers/importers.cpp importers/importers.hpp importers/classic.cpp importers/sl.cpp
                            importers/studio.cpp importers/xsplit.cpp)
@@ -368,6 +383,8 @@ if(OS_WINDOWS)
             win-update/updater/manifest.hpp
             ${CMAKE_BINARY_DIR}/obs.rc)
 
+  target_sources(obs PRIVATE system-info-windows.cpp)
+
   find_package(MbedTLS)
   target_link_libraries(obs PRIVATE Mbedtls::Mbedtls nlohmann_json::nlohmann_json OBS::blake2 Detours::Detours)
 
@@ -428,6 +445,8 @@ elseif(OS_MACOS)
   target_sources(obs PRIVATE platform-osx.mm)
   target_sources(obs PRIVATE forms/OBSPermissions.ui window-permissions.cpp window-permissions.hpp)
 
+  target_sources(obs PRIVATE system-info-macos.mm)
+
   if(ENABLE_WHATSNEW)
     find_library(SECURITY Security)
     find_package(nlohmann_json REQUIRED)
@@ -463,6 +482,8 @@ elseif(OS_MACOS)
 elseif(OS_POSIX)
   target_sources(obs PRIVATE platform-x11.cpp)
   target_link_libraries(obs PRIVATE Qt::GuiPrivate Qt::DBus)
+
+  target_sources(obs PRIVATE system-info-posix.cpp)
 
   target_compile_definitions(obs PRIVATE OBS_INSTALL_PREFIX="${OBS_INSTALL_PREFIX}"
                                          "$<$<BOOL:${LINUX_PORTABLE}>:LINUX_PORTABLE>")

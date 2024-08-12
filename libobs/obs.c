@@ -1591,6 +1591,8 @@ int obs_reset_video(struct obs_video_info *ovi)
 	     get_video_format_name(ovi->output_format),
 	     yuv ? yuv_format : "None", yuv ? "/" : "", yuv ? yuv_range : "");
 
+	source_profiler_reset_video(ovi);
+
 	return obs_init_video(ovi);
 }
 
@@ -2041,11 +2043,6 @@ static inline void *obs_encoder_addref_safe_(void *ref)
 static inline void *obs_service_addref_safe_(void *ref)
 {
 	return obs_service_get_ref(ref);
-}
-
-static inline void *obs_id_(void *data)
-{
-	return data;
 }
 
 obs_source_t *obs_get_source_by_name(const char *name)

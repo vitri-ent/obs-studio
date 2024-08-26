@@ -44,7 +44,7 @@
 #include "platform.hpp"
 #include "properties-view.hpp"
 #include "window-basic-main.hpp"
-#include "window-basic-settings.hpp"
+#include "moc_window-basic-settings.cpp"
 #include "window-basic-main-outputs.hpp"
 #include "window-projector.hpp"
 
@@ -2174,9 +2174,12 @@ void OBSBasicSettings::LoadAdvOutputStreamingEncoderProperties()
 	if (!SetComboByValue(ui->advOutEncoder, type)) {
 		uint32_t caps = obs_get_encoder_caps(type);
 		if ((caps & ENCODER_HIDE_FLAGS) != 0) {
-			const char *name = obs_encoder_get_display_name(type);
+			QString encName =
+				QT_UTF8(obs_encoder_get_display_name(type));
+			if (caps & OBS_ENCODER_CAP_DEPRECATED)
+				encName += " (" + QTStr("Deprecated") + ")";
 
-			ui->advOutEncoder->insertItem(0, QT_UTF8(name),
+			ui->advOutEncoder->insertItem(0, encName,
 						      QT_UTF8(type));
 			SetComboByValue(ui->advOutEncoder, type);
 		}
@@ -2292,9 +2295,12 @@ void OBSBasicSettings::LoadAdvOutputRecordingEncoderProperties()
 	if (!SetComboByValue(ui->advOutRecEncoder, type)) {
 		uint32_t caps = obs_get_encoder_caps(type);
 		if ((caps & ENCODER_HIDE_FLAGS) != 0) {
-			const char *name = obs_encoder_get_display_name(type);
+			QString encName =
+				QT_UTF8(obs_encoder_get_display_name(type));
+			if (caps & OBS_ENCODER_CAP_DEPRECATED)
+				encName += " (" + QTStr("Deprecated") + ")";
 
-			ui->advOutRecEncoder->insertItem(1, QT_UTF8(name),
+			ui->advOutRecEncoder->insertItem(1, encName,
 							 QT_UTF8(type));
 			SetComboByValue(ui->advOutRecEncoder, type);
 		} else {
@@ -5083,6 +5089,11 @@ static void DisableIncompatibleCodecs(QComboBox *cbox, const QString &format,
 		if (encoderId.empty())
 			continue;
 
+		if (obs_get_encoder_caps(encoderId.c_str()) &
+		    OBS_ENCODER_CAP_DEPRECATED) {
+			encDisplayName += " (" + QTStr("Deprecated") + ")";
+		}
+
 		const char *codec = obs_get_encoder_codec(encoderId.c_str());
 
 		bool is_compatible =
@@ -5473,9 +5484,11 @@ void OBSBasicSettings::SimpleStreamingEncoderChanged()
 
 		const char *name =
 			get_simple_output_encoder(QT_TO_UTF8(encoder));
+		const bool isFFmpegEncoder = strncmp(name, "ffmpeg_", 7) == 0;
 		obs_properties_t *props = obs_get_encoder_properties(name);
 
-		obs_property_t *p = obs_properties_get(props, "preset2");
+		obs_property_t *p = obs_properties_get(
+			props, isFFmpegEncoder ? "preset2" : "preset");
 		size_t num = obs_property_list_item_count(p);
 		for (size_t i = 0; i < num; i++) {
 			const char *name = obs_property_list_item_name(p, i);

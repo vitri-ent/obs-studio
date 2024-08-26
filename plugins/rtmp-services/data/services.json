@@ -1503,38 +1503,23 @@
             "name": "Lightcast.com",
             "servers": [
                 {
-                    "name": "North America / East",
-                    "url": "rtmp://us-east.live.lightcast.com/202E1F/default"
+                    "name": "North America 1",
+                    "url": "rtmp://ingest-na1.live.lightcast.com/in"
                 },
                 {
-                    "name": "North America / West",
-                    "url": "rtmp://us-west.live.lightcast.com/202E1F/default"
+                    "name": "North America 2",
+                    "url": "rtmp://ingest-na2.live.lightcast.com/in"
                 },
                 {
-                    "name": "Europe / Amsterdam",
-                    "url": "rtmp://europe.live.lightcast.com/202E1F/default"
-                },
-                {
-                    "name": "Europe / Frankfurt",
-                    "url": "rtmp://europe-fra.live.lightcast.com/202E1F/default"
-                },
-                {
-                    "name": "Europe / Stockholm",
-                    "url": "rtmp://europe-sto.live.lightcast.com/202E1F/default"
-                },
-                {
-                    "name": "Asia / Hong Kong",
-                    "url": "rtmp://asia.live.lightcast.com/202E1F/default"
-                },
-                {
-                    "name": "Australia / Sydney",
-                    "url": "rtmp://australia.live.lightcast.com/202E1F/default"
+                    "name": "Europe",
+                    "url": "rtmp://ingest-eu1.live.lightcast.com/in"
                 }
             ],
             "recommended": {
                 "keyint": 2,
                 "max video bitrate": 6000,
-                "max audio bitrate": 160
+                "max audio bitrate": 320,
+                "x264opts": "scenecut=0"
             },
             "supported video codecs": [
                 "h264"
@@ -2768,29 +2753,6 @@
             }
         },
         {
-            "name": "Hakuna Live - RTMP",
-            "servers": [
-                {
-                    "name": "Republic of Korea / Japan",
-                    "url": "rtmps://media-proxy.prod.an1.media.hpcnt.com/hakuna"
-                }
-            ],
-            "protocol": "RTMP",
-            "supported video codecs": [
-                "h264"
-            ],
-            "recommended": {
-                "keyint": 2,
-                "supported resolutions": [
-                    "1920x1080",
-                    "1280x720"
-                ],
-                "max video bitrate": 6000,
-                "max audio bitrate": 320,
-                "bframes": 0
-            }
-        },
-        {
             "name": "sheeta",
             "common": false,
             "more_info_link": "https://partner-support.sheeta.com/hc/ja/articles/4404573942425-%E7%94%9F%E6%94%BE%E9%80%81%E3%81%AE%E9%85%8D%E4%BF%A1%E6%96%B9%E6%B3%95",
@@ -2980,6 +2942,28 @@
                 "keyint": 1,
                 "bframes": 0
             }
+        },
+        {
+            "name": "NFHS Network",
+            "more_info_link": "https://support.nfhsnetwork.com/hc/en-us",
+            "stream_key_link": "https://console.nfhsnetwork.com/nfhs-events/",
+            "servers": [
+                {
+                    "name": "Manual Broadcasts",
+                    "url": "rtmp://video.nfhsnetwork.com/manual"
+                }
+            ],
+            "recommended": {
+                "supported resolutions": [
+                    "1920x1080",
+                    "1280x720",
+                    "640x360"
+                ],
+                "max fps": 60
+            },
+            "supported video codecs": [
+                "h264"
+            ]
         }
     ]
 }

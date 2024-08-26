@@ -122,6 +122,13 @@ create_encoder(const char *id, enum obs_encoder_type type, const char *name,
 	}
 
 	blog(LOG_DEBUG, "encoder '%s' (%s) created", name, id);
+
+	if (ei && ei->caps & OBS_ENCODER_CAP_DEPRECATED) {
+		blog(LOG_WARNING,
+		     "Encoder ID '%s' is deprecated and may be removed in a future version.",
+		     id);
+	}
+
 	return encoder;
 }
 
@@ -180,8 +187,15 @@ static inline void get_video_info(struct obs_encoder *encoder,
 	if (encoder->info.get_video_info)
 		encoder->info.get_video_info(encoder->context.data, info);
 
-	if (info->width != voi->width || info->height != voi->height)
-		obs_encoder_set_scaled_size(encoder, info->width, info->height);
+	/**
+	 * Prevent video output from performing an actual scale. If GPU scaling is
+	 * enabled, the voi will contain the scaled size. Therefore, GPU scaling
+	 * takes priority over self-scaling functionality.
+	 */
+	if ((encoder->info.caps & OBS_ENCODER_CAP_SCALING) != 0) {
+		info->width = voi->width;
+		info->height = voi->height;
+	}
 }
 
 static inline bool gpu_encode_available(const struct obs_encoder *encoder)
@@ -379,7 +393,7 @@ static inline void free_audio_buffers(struct obs_encoder *encoder)
 	}
 }
 
-static void obs_encoder_actually_destroy(obs_encoder_t *encoder)
+void obs_encoder_destroy(obs_encoder_t *encoder)
 {
 	if (encoder) {
 		pthread_mutex_lock(&encoder->outputs_mutex);
@@ -417,28 +431,6 @@ static void obs_encoder_actually_destroy(obs_encoder_t *encoder)
 			video_output_free_frame_rate_divisor(
 				encoder->fps_override);
 		bfree(encoder);
-	}
-}
-
-/* does not actually destroy the encoder until all connections to it have been
- * removed. (full reference counting really would have been superfluous) */
-void obs_encoder_destroy(obs_encoder_t *encoder)
-{
-	if (encoder) {
-		bool destroy;
-
-		obs_context_data_remove(&encoder->context);
-
-		pthread_mutex_lock(&encoder->init_mutex);
-		pthread_mutex_lock(&encoder->callbacks_mutex);
-		destroy = encoder->callbacks.num == 0;
-		if (!destroy)
-			encoder->destroy_on_stop = true;
-		pthread_mutex_unlock(&encoder->callbacks_mutex);
-		pthread_mutex_unlock(&encoder->init_mutex);
-
-		if (destroy)
-			obs_encoder_actually_destroy(encoder);
 	}
 }
 
@@ -705,12 +697,17 @@ void obs_encoder_shutdown(obs_encoder_t *encoder)
 	if (encoder->context.data) {
 		encoder->info.destroy(encoder->context.data);
 		encoder->context.data = NULL;
-		da_free(encoder->paired_encoders);
 		encoder->first_received = false;
 		encoder->offset_usec = 0;
 		encoder->start_ts = 0;
 		encoder->frame_rate_divisor_counter = 0;
 		maybe_clear_encoder_core_video_mix(encoder);
+
+		for (size_t i = 0; i < encoder->paired_encoders.num; i++) {
+			obs_weak_encoder_release(
+				encoder->paired_encoders.array[i]);
+		}
+		da_free(encoder->paired_encoders);
 	}
 	obs_encoder_set_last_error(encoder, NULL);
 	pthread_mutex_unlock(&encoder->init_mutex);
@@ -815,9 +812,6 @@ void obs_encoder_stop(obs_encoder_t *encoder,
 		pthread_mutex_unlock(&encoder->init_mutex);
 
 		struct obs_encoder_group *group = encoder->encoder_group;
-
-		if (encoder->destroy_on_stop)
-			obs_encoder_actually_destroy(encoder);
 
 		/* Destroying the group all the way back here prevents a race
 		 * where destruction of the group can prematurely destroy the
@@ -1445,7 +1439,6 @@ static void receive_video(void *param, struct video_data *frame)
 	profile_start(receive_video_name);
 
 	struct obs_encoder *encoder = param;
-	struct obs_encoder **paired = encoder->paired_encoders.array;
 	struct encoder_frame enc_frame;
 
 	if (encoder->encoder_group && !encoder->start_ts) {
@@ -1460,10 +1453,18 @@ static void receive_video(void *param, struct video_data *frame)
 
 	if (!encoder->first_received && encoder->paired_encoders.num) {
 		for (size_t i = 0; i < encoder->paired_encoders.num; i++) {
-			if (!paired[i]->first_received ||
-			    paired[i]->first_raw_ts > frame->timestamp) {
+			obs_encoder_t *paired = obs_weak_encoder_get_encoder(
+				encoder->paired_encoders.array[i]);
+			if (!paired)
+				continue;
+
+			if (!paired->first_received ||
+			    paired->first_raw_ts > frame->timestamp) {
+				obs_encoder_release(paired);
 				goto wait_for_audio;
 			}
+
+			obs_encoder_release(paired);
 		}
 	}
 
@@ -1553,8 +1554,10 @@ static bool buffer_audio(struct obs_encoder *encoder, struct audio_data *data)
 
 	struct obs_encoder *paired_encoder = NULL;
 	/* Audio encoders can only be paired to one video encoder */
-	if (encoder->paired_encoders.num)
-		paired_encoder = encoder->paired_encoders.array[0];
+	if (encoder->paired_encoders.num) {
+		paired_encoder = obs_weak_encoder_get_encoder(
+			encoder->paired_encoders.array[0]);
+	}
 
 	if (!encoder->start_ts && paired_encoder) {
 		uint64_t end_ts = data->timestamp;
@@ -1595,6 +1598,7 @@ static bool buffer_audio(struct obs_encoder *encoder, struct audio_data *data)
 
 fail:
 	push_back_audio(encoder, data, size, offset_size);
+	obs_encoder_release(paired_encoder);
 
 	profile_end(buffer_audio_name);
 	return success;

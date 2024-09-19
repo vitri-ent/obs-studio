@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.22...3.25)
-
-legacy_check()
+cmake_minimum_required(VERSION 3.28...3.30)
 
 include(cmake/obs-version.cmake)
+
+if(OS_WINDOWS AND NOT OBS_PARENT_ARCHITECTURE STREQUAL CMAKE_VS_PLATFORM_NAME)
+  include(cmake/os-windows.cmake)
+  return()
+endif()
 
 find_package(Threads REQUIRED)
 

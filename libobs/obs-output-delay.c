@@ -45,12 +45,17 @@ static inline bool log_flag_encoded(const struct obs_output *output,
 }
 
 static inline void push_packet(struct obs_output *output,
-			       struct encoder_packet *packet, uint64_t t)
+			       struct encoder_packet *packet,
+			       struct encoder_packet_time *packet_time,
+			       uint64_t t)
 {
 	struct delay_data dd;
 
 	dd.msg = DELAY_MSG_PACKET;
 	dd.ts = t;
+	dd.packet_time_valid = packet_time != NULL;
+	if (packet_time != NULL)
+		dd.packet_time = *packet_time;
 	obs_encoder_packet_create_instance(&dd.packet, packet);
 
 	pthread_mutex_lock(&output->delay_mutex);
@@ -66,7 +71,10 @@ static inline void process_delay_data(struct obs_output *output,
 		if (!delay_active(output) || !delay_capturing(output))
 			obs_encoder_packet_release(&dd->packet);
 		else
-			output->delay_callback(output, &dd->packet);
+			output->delay_callback(output, &dd->packet,
+					       dd->packet_time_valid
+						       ? &dd->packet_time
+						       : NULL);
 		break;
 	case DELAY_MSG_START:
 		obs_output_actual_start(output);
@@ -128,24 +136,14 @@ static inline bool pop_packet(struct obs_output *output, uint64_t t)
 	return popped;
 }
 
-void process_delay(void *data, struct encoder_packet *packet)
+void process_delay(void *data, struct encoder_packet *packet,
+		   struct encoder_packet_time *packet_time)
 {
 	struct obs_output *output = data;
 	uint64_t t = os_gettime_ns();
-	push_packet(output, packet, t);
+	push_packet(output, packet, packet_time, t);
 	while (pop_packet(output, t))
 		;
-}
-
-void obs_output_signal_delay(obs_output_t *output, const char *signal)
-{
-	struct calldata params;
-	uint8_t stack[128];
-
-	calldata_init_fixed(&params, stack, sizeof(stack));
-	calldata_set_ptr(&params, "output", output);
-	calldata_set_int(&params, "sec", output->active_delay_ns / 1000000000);
-	signal_handler_signal(output->context.signals, signal, &params);
 }
 
 bool obs_output_delay_start(obs_output_t *output)

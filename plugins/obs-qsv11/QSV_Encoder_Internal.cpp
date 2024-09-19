@@ -177,6 +177,42 @@ mfxStatus QSV_Encoder_Internal::Open(qsv_param_t *pParams, enum qsv_codec codec)
 	return sts;
 }
 
+PRAGMA_WARN_PUSH
+PRAGMA_WARN_DEPRECATION
+static inline bool HasOptimizedBRCSupport(const mfxPlatform &platform,
+					  const mfxVersion &version,
+					  mfxU16 rateControl)
+{
+#if (MFX_VERSION_MAJOR >= 2 && MFX_VERSION_MINOR >= 12) || MFX_VERSION_MAJOR > 2
+	if ((version.Major >= 2 && version.Minor >= 12) || version.Major > 2)
+		if (rateControl == MFX_RATECONTROL_CBR &&
+		    (platform.CodeName >= MFX_PLATFORM_LUNARLAKE &&
+		     platform.CodeName != MFX_PLATFORM_ALDERLAKE_N))
+			return true;
+#endif
+	UNUSED_PARAMETER(platform);
+	UNUSED_PARAMETER(version);
+	UNUSED_PARAMETER(rateControl);
+	return false;
+}
+
+static inline bool HasAV1ScreenContentSupport(const mfxPlatform &platform,
+					      const mfxVersion &version)
+{
+#if (MFX_VERSION_MAJOR >= 2 && MFX_VERSION_MINOR >= 12) || MFX_VERSION_MAJOR > 2
+	// Platform enums needed are introduced in VPL version 2.12
+	if ((version.Major >= 2 && version.Minor >= 12) || version.Major > 2)
+		if (platform.CodeName >= MFX_PLATFORM_LUNARLAKE &&
+		    platform.CodeName != MFX_PLATFORM_ALDERLAKE_N &&
+		    platform.CodeName != MFX_PLATFORM_ARROWLAKE)
+			return true;
+#endif
+	UNUSED_PARAMETER(platform);
+	UNUSED_PARAMETER(version);
+	return false;
+}
+PRAGMA_WARN_POP
+
 mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams,
 					   enum qsv_codec codec)
 {
@@ -233,10 +269,18 @@ mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams,
 	switch (pParams->nRateControl) {
 	case MFX_RATECONTROL_CBR:
 		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
-		m_mfxEncParams.mfx.BufferSizeInKB =
-			(pParams->nTargetBitRate / 8) * 2;
+
+		if (HasOptimizedBRCSupport(platform, m_ver,
+					   pParams->nRateControl)) {
+			m_mfxEncParams.mfx.BufferSizeInKB =
+				(pParams->nTargetBitRate / 8) * 1;
+		} else {
+			m_mfxEncParams.mfx.BufferSizeInKB =
+				(pParams->nTargetBitRate / 8) * 2;
+		}
+
 		m_mfxEncParams.mfx.InitialDelayInKB =
-			(pParams->nTargetBitRate / 8) * 1;
+			m_mfxEncParams.mfx.BufferSizeInKB / 2;
 		break;
 	case MFX_RATECONTROL_VBR:
 		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
@@ -304,6 +348,22 @@ mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams,
 
 	extendedBuffers.push_back((mfxExtBuffer *)&m_co2);
 
+	if (HasOptimizedBRCSupport(platform, m_ver, pParams->nRateControl)) {
+		memset(&m_co3, 0, sizeof(mfxExtCodingOption3));
+		m_co3.Header.BufferId = MFX_EXTBUFF_CODING_OPTION3;
+		m_co3.Header.BufferSz = sizeof(m_co3);
+		m_co3.WinBRCSize = pParams->nFpsNum / pParams->nFpsDen;
+
+		if (codec == QSV_CODEC_AVC || codec == QSV_CODEC_HEVC) {
+			m_co3.WinBRCMaxAvgKbps =
+				mfxU16(1.3 * pParams->nTargetBitRate);
+		} else if (codec == QSV_CODEC_AV1) {
+			m_co3.WinBRCMaxAvgKbps =
+				mfxU16(1.2 * pParams->nTargetBitRate);
+		}
+		extendedBuffers.push_back((mfxExtBuffer *)&m_co3);
+	}
+
 	if (codec == QSV_CODEC_HEVC) {
 		if ((pParams->nWidth & 15) || (pParams->nHeight & 15)) {
 			memset(&m_ExtHEVCParam, 0, sizeof(m_ExtHEVCParam));
@@ -327,6 +387,22 @@ mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams,
 		m_ExtAv1TileParam.NumTileColumns = 2;
 		extendedBuffers.push_back((mfxExtBuffer *)&m_ExtAv1TileParam);
 	}
+
+	// AV1_SCREEN_CONTENT_TOOLS API is introduced in VPL version 2.11
+#if (MFX_VERSION_MAJOR >= 2 && MFX_VERSION_MINOR >= 11) || MFX_VERSION_MAJOR > 2
+	if (codec == QSV_CODEC_AV1 &&
+	    HasAV1ScreenContentSupport(platform, m_ver)) {
+		memset(&m_ExtAV1ScreenContentTools, 0,
+		       sizeof(m_ExtAV1ScreenContentTools));
+		m_ExtAV1ScreenContentTools.Header.BufferId =
+			MFX_EXTBUFF_AV1_SCREEN_CONTENT_TOOLS;
+		m_ExtAV1ScreenContentTools.Header.BufferSz =
+			sizeof(m_ExtAV1ScreenContentTools);
+		m_ExtAV1ScreenContentTools.Palette = MFX_CODINGOPTION_ON;
+		extendedBuffers.push_back(
+			(mfxExtBuffer *)&m_ExtAV1ScreenContentTools);
+	}
+#endif
 
 #if defined(_WIN32)
 	// TODO: Ask about this one on VAAPI too.

@@ -225,6 +225,25 @@ bool SetDisplayAffinitySupported(void)
 	return supported;
 }
 
+void InitConsole(void)
+{
+	if (_fileno(stdout) >= 0 || _fileno(stderr) >= 0) {
+		return;
+	}
+	if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+		HANDLE consoleHandleOut = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (consoleHandleOut != INVALID_HANDLE_VALUE) {
+			freopen("CONOUT$", "w", stdout);
+			setvbuf(stdout, NULL, _IONBF, 0);
+		}
+		HANDLE consoleHandleErr = GetStdHandle(STD_ERROR_HANDLE);
+		if (consoleHandleErr != INVALID_HANDLE_VALUE) {
+			freopen("CONOUT$", "w", stderr);
+			setvbuf(stderr, NULL, _IONBF, 0);
+		}
+	}
+}
+
 bool DisableAudioDucking(bool disable)
 {
 	ComPtr<IMMDeviceEnumerator> devEmum;
